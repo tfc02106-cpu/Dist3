@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>一顆、兩顆、三顆：分布形狀怎麼變</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f7fb;color:#182b43;font-family:system-ui,"Microsoft JhengHei",sans-serif;font-size:18px;line-height:1.7}
+main{max-width:1180px;margin:auto;padding:26px 22px 60px}
+h1{margin:0 0 6px;font-size:34px;line-height:1.25}
+h2{font-size:24px;margin:0 0 12px}
+h3{font-size:22px;margin:0 0 4px}
+.sub{color:#536780;margin:0 0 20px}
+.home{display:inline-block;text-decoration:none;color:#175caa;border:1px solid #b9c8da;background:white;border-radius:999px;padding:8px 18px;font-size:16px;margin-bottom:18px}
+.panel{background:white;border:1px solid #dce4ef;border-radius:16px;padding:22px;margin:16px 0}
+.controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+button,select,input[type=number]{font:inherit;border:1px solid #b9c8da;border-radius:9px;padding:10px 17px;background:white;color:#182b43;cursor:pointer}
+button:hover{background:#edf4ff}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #d17514;outline-offset:3px}
+.primary{background:#175caa;color:white;border-color:#175caa}
+.primary:hover{background:#12508f}
+.clear{background:#fff2bb}
+label{display:inline-flex;gap:8px;align-items:center}
+.stage{text-align:center;padding:10px 0 4px}
+.dice{display:flex;justify-content:center;gap:34px;flex-wrap:wrap;margin:10px 0}
+.dice .one{min-width:110px}
+.dice .num{font-size:86px;font-weight:700;color:#175caa;line-height:1.1}
+.dice small{display:block;font-size:18px;color:#536780}
+.latest{font-size:24px;font-weight:700;margin:6px 0 14px;min-height:34px}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:8px}
+.metric{background:#f1f6fc;border-radius:12px;padding:14px}
+.metric .value{display:block;font-size:26px;font-weight:700;margin:2px 0;font-variant-numeric:tabular-nums}
+.metric .muted{color:#536780;font-size:15px}
+.chartbox{border:1px solid #dce4ef;border-radius:14px;padding:14px 12px;margin:16px 0;background:white;overflow-x:auto}
+.chartbox p{margin:2px 0 8px;color:#536780;font-size:16px}
+svg{display:block;width:100%;height:auto;min-width:560px}
+svg text{font-family:inherit;fill:#354a63}
+.legend{display:flex;gap:22px;flex-wrap:wrap;font-size:16px;align-items:center;margin:4px 0 0}
+.key{display:inline-block;width:22px;height:12px;margin-right:7px;vertical-align:middle}
+.key.bar{background:#2875c5}
+.key.theory{height:0;border-top:4px dashed #bd5b11}
+.key.normal{height:0;border-top:4px solid #1b8a5a}
+.note{background:#fff8e9;border-left:4px solid #d58b21;padding:14px 18px;margin:14px 0 0}
+table{border-collapse:collapse;width:100%;font-size:17px;min-width:520px}
+th,td{text-align:right;padding:9px;border-bottom:1px solid #e2e8f0;font-variant-numeric:tabular-nums}
+th{background:#f1f6fc}
+td:first-child,th:first-child{text-align:left}
+.table-scroll{overflow-x:auto}
+#manualForm input{width:110px;height:76px;font-size:42px;text-align:center;border:2px solid #175caa;border-radius:10px;padding:0}
+#manualError{color:#b42318;font-weight:700}
+footer{font-size:16px;color:#536780;margin-top:24px}
+@media(max-width:720px){
+  main{padding:16px 12px}h1{font-size:26px}.metrics{grid-template-columns:1fr 1fr}
+  .dice .num{font-size:62px}#manualForm input{width:84px;height:62px;font-size:32px}
+}
+</style>
+</head>
+<body>
+<main>
+<a class="home" href="https://tfc02106-cpu.github.io/QQ/">← 回到學習世界</a>
+
+<h1>一顆、兩顆、三顆：分布形狀怎麼變</h1>
+<p class="sub">同一批實驗資料，同時畫三張圖：一顆骰子是矩形分布，兩顆點數和變成三角分布，三顆點數和開始接近鐘形。</p>
+
+<section class="panel">
+  <div class="controls">
+    <label>實驗方式
+      <select id="mode">
+        <option value="sim">電腦擲骰</option>
+        <option value="manual">實體骰子：手動輸入</option>
+      </select>
+    </label>
+    <button class="primary" id="roll">擲三顆骰子</button>
+    <span style="color:#536780">或直接批次模擬：</span>
+    <button data-n="100">＋100 次</button>
+    <button data-n="1000">＋1000 次</button>
+    <button data-n="10000">＋10000 次</button>
+    <button class="clear" id="reset">清除重做</button>
+    <button id="export">匯出 CSV</button>
+  </div>
+
+  <div class="stage">
+    <div class="dice" id="dice">
+      <div class="one"><small>骰子 1</small><div class="num" id="d1">?</div></div>
+      <div class="one"><small>骰子 2</small><div class="num" id="d2">?</div></div>
+      <div class="one"><small>骰子 3</small><div class="num" id="d3">?</div></div>
+    </div>
+    <p class="latest" id="latest">按上面的按鈕開始。</p>
+
+    <form id="manualForm" hidden novalidate>
+      <p>請擲三顆實體骰子，分別輸入點數，再按「記錄這一組」。</p>
+      <div class="controls" style="justify-content:center">
+        <label for="mA">骰子 1 <input id="mA" type="number" min="1" max="6" step="1" inputmode="numeric" autocomplete="off"></label>
+        <label for="mB">骰子 2 <input id="mB" type="number" min="1" max="6" step="1" inputmode="numeric" autocomplete="off"></label>
+        <label for="mC">骰子 3 <input id="mC" type="number" min="1" max="6" step="1" inputmode="numeric" autocomplete="off"></label>
+        <button type="submit" class="primary">記錄這一組</button>
+      </div>
+      <p id="manualError" role="alert"></p>
+    </form>
+  </div>
+
+  <div class="metrics">
+    <div class="metric"><span class="muted">已記錄組數</span><span class="value" id="mN">0</span><span class="muted">每組三顆</span></div>
+    <div class="metric"><span class="muted">一顆平均／標準差</span><span class="value" id="m1">—</span><span class="muted">理論 3.500／1.708</span></div>
+    <div class="metric"><span class="muted">兩顆和平均／標準差</span><span class="value" id="m2">—</span><span class="muted">理論 7.000／2.415</span></div>
+    <div class="metric"><span class="muted">三顆和平均／標準差</span><span class="value" id="m3">—</span><span class="muted">理論 10.500／2.958</span></div>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>三張圖一起看</h2>
+  <div class="legend">
+    <span><i class="key bar"></i>實驗比例</span>
+    <span><i class="key theory"></i>理論比例</span>
+    <span><i class="key normal"></i>常態分布近似</span>
+  </div>
+  <div id="chartA" class="chartbox"></div>
+  <div id="chartB" class="chartbox"></div>
+  <div id="chartC" class="chartbox"></div>
+  <p class="note">
+    一顆骰子每面機率都是 1/6，畫出來是平的矩形，綠色的常態曲線完全對不上。
+    兩顆相加時，7 點有 6 種組合、2 點和 12 點各只有 1 種，於是變成三角形。
+    三顆相加，組合數在中間更集中，肩膀變圓，綠線已經貼得相當近——這就是中央極限定理：
+    不管原本的分布多麼不像鐘形，獨立變數相加的次數一多，和的分布就會往常態靠攏。
+  </p>
+</section>
+
+<section class="panel">
+  <h2>理論機率怎麼算</h2>
+  <p>把每一種點數組合數出來就好。兩顆和的組合數是一顆的分布跟自己做一次「摺積」，三顆再摺積一次。</p>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>點數和</th><th>兩顆組合數</th><th>兩顆理論</th><th>三顆組合數</th><th>三顆理論</th></tr></thead>
+      <tbody id="theoryRows"></tbody>
+    </table>
+  </div>
+  <p class="note">
+    和的平均值＝3.5 × 顆數；變異數＝(35/12) × 顆數，所以標準差是 √(35n/12)。
+    顆數變成 n 倍時，標準差只放大 √n 倍，但可能的範圍放大 n 倍，所以圖形看起來相對更集中。
+  </p>
+</section>
+
+<section class="panel">
+  <h2>原始紀錄</h2>
+  <details>
+    <summary>展開每一組的點數（只列最後 50 組，完整資料請匯出 CSV）</summary>
+    <div class="table-scroll" style="max-height:420px;overflow-y:auto">
+      <table>
+        <thead><tr><th>第幾組</th><th>骰子 1</th><th>骰子 2</th><th>骰子 3</th><th>兩顆和</th><th>三顆和</th></tr></thead>
+        <tbody id="rawRows"></tbody>
+      </table>
+    </div>
+  </details>
+</section>
+
+<footer>每一顆都是獨立的公平六面骰，1～6 機率各為 1/6。三張圖用同一批資料：第一張只看骰子 1，第二張看骰子 1＋2，第三張看骰子 1＋2＋3，所以三張圖的筆數相同。重新整理會清除資料。</footer>
+</main>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+
+/* ---------- 理論分布：用摺積算組合數 ---------- */
+function convolve(a, b){
+  const out = Array(a.length + b.length - 1).fill(0);
+  for (let i = 0; i < a.length; i++)
+    for (let j = 0; j < b.length; j++) out[i + j] += a[i] * b[j];
+  return out;
+}
+const ONE = [1,1,1,1,1,1];                 // 索引 0 對應點數 1
+const WAYS2 = convolve(ONE, ONE);          // 索引 0 對應點數和 2
+const WAYS3 = convolve(WAYS2, ONE);        // 索引 0 對應點數和 3
+const THEORY = {
+  1: { min:1, max:6,  p: ONE.map(v => v / 6) },
+  2: { min:2, max:12, p: WAYS2.map(v => v / 36) },
+  3: { min:3, max:18, p: WAYS3.map(v => v / 216) }
+};
+
+$('theoryRows').innerHTML = Array.from({length:17}, (_, i) => {
+  const s = i + 2;
+  const w2 = (s >= 2 && s <= 12) ? WAYS2[s - 2] : 0;
+  const w3 = (s >= 3 && s <= 18) ? WAYS3[s - 3] : 0;
+  return `<tr><td>${s}</td><td>${w2 || '—'}</td><td>${w2 ? (w2/36*100).toFixed(2)+'%' : '—'}</td>`
+       + `<td>${w3 || '—'}</td><td>${w3 ? (w3/216*100).toFixed(2)+'%' : '—'}</td></tr>`;
+}).join('');
+
+/* ---------- 資料 ---------- */
+let trials = [];   // 每筆 [a,b,c]
+let mode = 'sim';
+
+const die = () => 1 + Math.floor(Math.random() * 6);
+const sums = n => trials.map(t => t.slice(0, n).reduce((x, y) => x + y, 0));
+
+function stat(v){
+  if (!v.length) return null;
+  const m = v.reduce((a, b) => a + b, 0) / v.length;
+  const sd = v.length > 1
+    ? Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / (v.length - 1)) : 0;
+  return { m, sd };
+}
+
+/* ---------- 畫圖 ---------- */
+function chart(values, n, title){
+  const { min, max, p } = THEORY[n];
+  const k = max - min + 1;
+  const counts = Array(k).fill(0);
+  values.forEach(v => counts[v - min]++);
+  const N = values.length;
+  const obs = counts.map(c => N ? c / N * 100 : 0);
+  const theo = p.map(v => v * 100);
+
+  const mu = 3.5 * n, sd = Math.sqrt(35 * n / 12);
+  const normal = x => Math.exp(-((x - mu) ** 2) / (2 * sd * sd)) / (sd * Math.sqrt(2 * Math.PI)) * 100;
+
+  const top = Math.max(5, Math.ceil(Math.max(...obs, ...theo, normal(mu)) / 5) * 5);
+  const W = 900, H = 340, L = 74, R = 26, T = 34, B = 62;
+  const pw = W - L - R, ph = H - T - B, step = pw / k;
+  const X = v => L + (v - min + 0.5) * step;
+  const Y = v => T + ph * (1 - v / top);
+
+  let s = '';
+  const gap = top / 5;
+  for (let v = 0; v <= top + 1e-9; v += gap)
+    s += `<line x1="${L}" x2="${W-R}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="#dce4ef"/>`
+       + `<text x="${L-12}" y="${(Y(v)+7).toFixed(1)}" text-anchor="end" font-size="19">${v}%</text>`;
+
+  for (let v = min; v <= max; v++){
+    const i = v - min, h = ph * obs[i] / top;
+    s += `<rect x="${(X(v) - step*0.34).toFixed(1)}" y="${Y(obs[i]).toFixed(1)}" width="${(step*0.68).toFixed(1)}" height="${h.toFixed(1)}" fill="#2875c5"/>`
+       + `<text x="${X(v).toFixed(1)}" y="${H-B+26}" text-anchor="middle" font-size="20">${v}</text>`;
+    if (N && obs[i] > 0 && k <= 12)
+      s += `<text x="${X(v).toFixed(1)}" y="${(Y(obs[i])-9).toFixed(1)}" text-anchor="middle" font-size="17" font-weight="bold">${obs[i].toFixed(1)}</text>`;
+  }
+
+  // 常態近似（平滑曲線）
+  const curve = [];
+  for (let x = min - 0.5; x <= max + 0.5; x += 0.1) curve.push(`${X(x).toFixed(1)},${Y(normal(x)).toFixed(1)}`);
+  s += `<polyline points="${curve.join(' ')}" fill="none" stroke="#1b8a5a" stroke-width="3"/>`;
+
+  // 理論比例（虛線折線＋點）
+  s += `<polyline points="${theo.map((v,i) => `${X(i+min).toFixed(1)},${Y(v).toFixed(1)}`).join(' ')}" fill="none" stroke="#bd5b11" stroke-width="4" stroke-dasharray="9 6"/>`;
+  s += theo.map((v,i) => `<circle cx="${X(i+min).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="4" fill="#bd5b11"/>`).join('');
+
+  s += `<text x="${L}" y="22" font-size="19">出現比例（%）</text>`
+     + `<text x="${W/2}" y="${H-4}" text-anchor="middle" font-size="20">${n === 1 ? '骰子點數' : n + ' 顆骰子的點數和'}</text>`;
+
+  return `<h3>${title}</h3><p>共 ${N} 筆　平均 ${N ? stat(values).m.toFixed(3) : '—'}　標準差 ${N > 1 ? stat(values).sd.toFixed(3) : '—'}</p>`
+       + `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${title}">${s}</svg>`;
+}
+
+/* ---------- 更新畫面 ---------- */
+function render(){
+  const v1 = sums(1), v2 = sums(2), v3 = sums(3);
+  $('chartA').innerHTML = chart(v1, 1, '① 一顆骰子：矩形（均勻）分布');
+  $('chartB').innerHTML = chart(v2, 2, '② 兩顆點數和：三角分布');
+  $('chartC').innerHTML = chart(v3, 3, '③ 三顆點數和：開始接近鐘形');
+
+  $('mN').textContent = trials.length.toLocaleString();
+  const fmt = v => { const s = stat(v); return s ? s.m.toFixed(3) + '／' + s.sd.toFixed(3) : '—'; };
+  $('m1').textContent = fmt(v1);
+  $('m2').textContent = fmt(v2);
+  $('m3').textContent = fmt(v3);
+
+  const show = trials.slice(-50);
+  const base = trials.length - show.length;
+  $('rawRows').innerHTML = show.map((t, i) =>
+    `<tr><td>${base + i + 1}</td><td>${t[0]}</td><td>${t[1]}</td><td>${t[2]}</td>`
+    + `<td>${t[0]+t[1]}</td><td><strong>${t[0]+t[1]+t[2]}</strong></td></tr>`).join('');
+}
+
+function addOne(a, b, c){
+  trials.push([a, b, c]);
+  $('d1').textContent = a; $('d2').textContent = b; $('d3').textContent = c;
+  $('latest').textContent = `第 ${trials.length} 組：${a}、${b}、${c}　→　兩顆和 ${a+b}，三顆和 ${a+b+c}`;
+  render();
+}
+
+/* ---------- 事件 ---------- */
+$('mode').onchange = () => {
+  mode = $('mode').value;
+  $('manualForm').hidden = mode !== 'manual';
+  $('roll').hidden = mode === 'manual';
+  $('manualError').textContent = '';
+  if (mode === 'manual') $('mA').focus();
+};
+
+$('roll').onclick = () => { if (mode === 'sim') addOne(die(), die(), die()); };
+
+$('manualForm').onsubmit = e => {
+  e.preventDefault();
+  const a = Number($('mA').value), b = Number($('mB').value), c = Number($('mC').value);
+  if (![a,b,c].every(v => Number.isInteger(v) && v >= 1 && v <= 6)){
+    $('manualError').textContent = '三顆骰子都請填 1～6 的整數。';
+    return;
+  }
+  $('manualError').textContent = '';
+  addOne(a, b, c);
+  $('mA').value = ''; $('mB').value = ''; $('mC').value = '';
+  $('mA').focus();
+};
+
+document.querySelectorAll('button[data-n]').forEach(btn => {
+  btn.onclick = () => {
+    const n = +btn.dataset.n;
+    for (let i = 0; i < n; i++) trials.push([die(), die(), die()]);
+    const last = trials[trials.length - 1];
+    $('d1').textContent = last[0]; $('d2').textContent = last[1]; $('d3').textContent = last[2];
+    $('latest').textContent = `批次模擬 ${n.toLocaleString()} 組，目前累計 ${trials.length.toLocaleString()} 組。`;
+    render();
+  };
+});
+
+$('reset').onclick = () => {
+  if (trials.length && !confirm('清除目前所有資料？')) return;
+  trials = [];
+  $('d1').textContent = '?'; $('d2').textContent = '?'; $('d3').textContent = '?';
+  $('latest').textContent = '已清除，重新開始。';
+  render();
+};
+
+$('export').onclick = () => {
+  const rows = ['\ufeff組別,骰子1,骰子2,骰子3,兩顆和,三顆和'];
+  trials.forEach((t, i) => rows.push(`${i+1},${t[0]},${t[1]},${t[2]},${t[0]+t[1]},${t[0]+t[1]+t[2]}`));
+  const url = URL.createObjectURL(new Blob([rows.join('\r\n')], { type:'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = `三顆骰子_${trials.length}組.csv`; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+
+render();
+</script>
+</body>
+</html>
