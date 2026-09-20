@@ -102,14 +102,15 @@ footer{font-size:16px;color:#536780;margin-top:24px}
 
   <div class="metrics">
     <div class="metric"><span class="muted">已記錄組數</span><span class="value" id="mN">0</span><span class="muted">每組三顆</span></div>
-    <div class="metric"><span class="muted">一顆平均／標準差</span><span class="value" id="m1">—</span><span class="muted">理論 3.500／1.708</span></div>
-    <div class="metric"><span class="muted">兩顆和平均／標準差</span><span class="value" id="m2">—</span><span class="muted">理論 7.000／2.415</span></div>
-    <div class="metric"><span class="muted">三顆和平均／標準差</span><span class="value" id="m3">—</span><span class="muted">理論 10.500／2.958</span></div>
+    <div class="metric"><span class="muted">骰子 1 平均／標準差</span><span class="value" id="m1">—</span><span class="muted">理論 3.500／1.708</span></div>
+    <div class="metric"><span class="muted">骰子 1＋2 和</span><span class="value" id="m2">—</span><span class="muted">理論 7.000／2.415</span></div>
+    <div class="metric"><span class="muted">骰子 1＋2＋3 和</span><span class="value" id="m3">—</span><span class="muted">理論 10.500／2.958</span></div>
   </div>
 </section>
 
 <section class="panel">
   <h2>三張圖一起看</h2>
+  <p class="sub">三張圖用同一批資料：第一張<strong>只用骰子 1</strong>，第二張用<strong>骰子 1＋2 的和</strong>，第三張用<strong>骰子 1＋2＋3 的和</strong>。</p>
   <div class="legend">
     <span><i class="key bar"></i>實驗比例</span>
     <span><i class="key theory"></i>理論比例</span>
@@ -201,7 +202,7 @@ function stat(v){
 }
 
 /* ---------- 畫圖 ---------- */
-function chart(values, n, title){
+function chart(values, n, title, xlab){
   const { min, max, p } = THEORY[n];
   const k = max - min + 1;
   const counts = Array(k).fill(0);
@@ -243,7 +244,7 @@ function chart(values, n, title){
   s += theo.map((v,i) => `<circle cx="${X(i+min).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="4" fill="#bd5b11"/>`).join('');
 
   s += `<text x="${L}" y="22" font-size="19">出現比例（%）</text>`
-     + `<text x="${W/2}" y="${H-4}" text-anchor="middle" font-size="20">${n === 1 ? '骰子點數' : n + ' 顆骰子的點數和'}</text>`;
+     + `<text x="${W/2}" y="${H-4}" text-anchor="middle" font-size="20">${xlab}</text>`;
 
   return `<h3>${title}</h3><p>共 ${N} 筆　平均 ${N ? stat(values).m.toFixed(3) : '—'}　標準差 ${N > 1 ? stat(values).sd.toFixed(3) : '—'}</p>`
        + `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${title}">${s}</svg>`;
@@ -252,9 +253,9 @@ function chart(values, n, title){
 /* ---------- 更新畫面 ---------- */
 function render(){
   const v1 = sums(1), v2 = sums(2), v3 = sums(3);
-  $('chartA').innerHTML = chart(v1, 1, '① 一顆骰子：矩形（均勻）分布');
-  $('chartB').innerHTML = chart(v2, 2, '② 兩顆點數和：三角分布');
-  $('chartC').innerHTML = chart(v3, 3, '③ 三顆點數和：開始接近鐘形');
+  $('chartA').innerHTML = chart(v1, 1, '① 只看骰子 1：矩形（均勻）分布', '骰子 1 的點數');
+  $('chartB').innerHTML = chart(v2, 2, '② 骰子 1＋2 的點數和：三角分布', '骰子 1＋2 的點數和');
+  $('chartC').innerHTML = chart(v3, 3, '③ 骰子 1＋2＋3 的點數和：接近鐘形', '骰子 1＋2＋3 的點數和');
 
   $('mN').textContent = trials.length.toLocaleString();
   const fmt = v => { const s = stat(v); return s ? s.m.toFixed(3) + '／' + s.sd.toFixed(3) : '—'; };
